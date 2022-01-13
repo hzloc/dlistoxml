@@ -23,7 +23,7 @@ class xmlGen:
     def __init__(self, filename, wellname, wellborename, bu, fieldname,
                  servicecompany, runnumber, creation_date, uidWell,
                  uidWellbore, uidWellInterventionId, purpose, datatype,
-                 servicetype, df, uid, nullValue, dataSource) -> None:
+                 servicetype, df, uid, nullValue, dataSource, units) -> None:
         self.wellname = wellname
         self.filename = filename
         self.bu = bu
@@ -46,7 +46,7 @@ class xmlGen:
         self.nullValue = nullValue
         self.dataSource = dataSource
         self.mnemonic = df.columns
-        self.units = df.iloc[0]
+        self.units = units
         self.comments = 'BU: ' + str(bu) + '\nAsset:' + str(fieldname)
         self.servicecategory = str(uidWellInterventionId) + ',' + str(
             runnumber) + ',' + str(servicetype) + ',' + str(datatype)
@@ -67,6 +67,9 @@ class xmlGen:
 
     def createtopXML(self):
         indexType, startIndex, endIndex = self.indexTypeDeterminer()
+        datas = self.df.values[:]
+        if(str(self.filename.split('.')[1]).lower() == 'dlis'):
+            datas = self.df.values[1:]
         root = Element("logs",
                        xmlns="http://www.witsml.org/schemas/1series",
                        version="1.4.1.1")
@@ -131,9 +134,10 @@ class xmlGen:
         top_3_1 = SubElement(top_3, 'mnemonicList')
         top_3_1.text = ','.join(self.mnemonic)
         top_3_2 = SubElement(top_3, 'unitList')
-        top_3_2.text = ','.join(self.units)
+        top_3_2.text = str(','.join(self.units)).lower()
 
-        for curve in self.df.values[1:]:
+        for curve in datas[:]:
+            print(type(curve[0]))
             top_3_3 = SubElement(top_3, 'data')
             x = ','.join(str(v) for v in curve)
             x1 = x.find(',')

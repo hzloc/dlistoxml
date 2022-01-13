@@ -6,6 +6,7 @@ import streamlit as st
 from wrapper import dlisioWrapper, xmlGen, LasChunker, detailsLasFile
 from dlisio import dlis
 import lasio
+import numpy as np
 #Time
 import time
 
@@ -70,10 +71,11 @@ if uploadedFile is not None:
     if str(uploadedFile.name).split(".")[1] == "dlis":
         dlf = dlis.load("./uploads/" + uploadedFile.name)
         dlfwrap = dlisioWrapper(dlf)
-        df = dlfwrap.dlisioPandas()
-        index1 = df.columns[0]
+        lf = dlfwrap.dlisioPandas()
+        index1 = lf.columns[0]
+        units = lf.iloc[0]
         st.write("### File")
-        st.dataframe(df)
+        st.dataframe(lf)
 
     # .las format
     if str(uploadedFile.name).split(".")[1] == "las":
@@ -98,9 +100,11 @@ if uploadedFile is not None:
                 wellDetails = detailsLasFile(lasiofile.well)
                 st.write(wellDetails)
             st.write("### Data")
+            units = [e.unit for e in lasiofile.curves]
             st.dataframe(lf)
             end=time.time()
             st.write(f"### Execution time is: {'{:.2f}'.format(end-start)} seconds")
+
 
 with st.form("xmlgeneration"):
     st.write(f"Xml Generation from {','.join(ALLOWED_FILE_TYPE).upper()} files")
@@ -144,10 +148,11 @@ if submit:
         purpose,
         datatype,
         servicetype,
-        df,
+        lf,
         False,
         nullValue,
         dataSource,
+        units=units
     )
     xmls = xml.createtopXML()
     try:
