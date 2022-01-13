@@ -1,0 +1,7 @@
+dlisio==0.3.5
+lasio==0.30.dev117+g8b0982b
+lxml==4.7.1
+numpy==1.22.0
+pandas==1.3.5
+protobuf==3.19.3
+streamlit==1.3.1

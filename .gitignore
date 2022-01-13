@@ -1,0 +1,8 @@
+__pycache__
+*.ipynb
+wd.las
+xml/*.xml
+.streamlit
+.vscode
+uploads/*.las
+generateLas/*.las
