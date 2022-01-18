@@ -6,3 +6,4 @@ xml/*.xml
 .vscode
 uploads/*.las
 generateLas/*.las
+configs/~$KDIunits.xlsx

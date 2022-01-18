@@ -19,11 +19,33 @@ def detailsLasFile(wells):
     return d
 
 
+def check(mnemonics, units):
+    filepath = "{}/configs/".format(Path(Path.cwd()).as_posix())
+    kdiUnits = pd.read_excel("{}KDIunits.xlsx".format(filepath))['Units']
+    with open("{}lognames.txt".format(filepath)) as f:
+        kdiMnemonics = f.readlines()
+    df = pd.DataFrame([mnemonics, units]).T
+    df.columns = ['Mnemonics', 'Units']
+    df = df.replace({'Units': {'': 'unitless', ' ': 'unitless'}})
+    arr1, arr2 = [],[]
+    for mnemonic, unit in df.values:
+        if(mnemonic in kdiMnemonics):
+            arr1.append("Yes")
+        else:
+            arr1.append('No')
+        if(unit in kdiUnits.values):
+            arr2.append(unit)
+        else:
+            arr2.append('Not recognized')
+    df = df.assign(KDI_Unit= arr2, Mnemonic_Structure= arr1)
+
+    return df
+
 class xmlGen:
     def __init__(self, filename, wellname, wellborename, bu, fieldname,
                  servicecompany, runnumber, creation_date, uidWell,
                  uidWellbore, uidWellInterventionId, purpose, datatype,
-                 servicetype, df, uid, nullValue, dataSource, units) -> None:
+                 servicetype, df, uid, nullValue, dataSource, units, conversion) -> None:
         self.wellname = wellname
         self.filename = filename
         self.bu = bu
@@ -44,13 +66,25 @@ class xmlGen:
         self.df = df
         self.indexType = df.columns[0]
         self.nullValue = nullValue
-        self.dataSource = dataSource
-        self.mnemonic = df.columns
+        self.dataSource = dataSource        
         self.units = units
         self.comments = 'BU: ' + str(bu) + '\nAsset:' + str(fieldname)
         self.servicecategory = str(uidWellInterventionId) + ',' + str(
             runnumber) + ',' + str(servicetype) + ',' + str(datatype)
+        self.mnemonic = df.columns
+        
+        if conversion == False:
+            self.mnemonic = df.columns
+        else:
+            self.mnemonic = self.convertMnemonics(df.columns)
 
+    def convertMnemonics(self,mnemonics):
+        temp = []
+        for mnemonic in mnemonics:
+            temp.append("{}_{}_{}".format(self.servicetype, self.datatype,mnemonic))
+        return temp
+    
+    
     def indexTypeDeterminer(self):
         indexType = ''
         startIndex = ''
@@ -137,7 +171,7 @@ class xmlGen:
         top_3_2.text = str(','.join(self.units)).lower()
 
         for curve in datas[:]:
-            print(type(curve[0]))
+            # print(type(curve[0]))
             top_3_3 = SubElement(top_3, 'data')
             x = ','.join(str(v) for v in curve)
             x1 = x.find(',')
@@ -286,5 +320,3 @@ class LasChunker:
                 newLasfile.write(''.join(el))
 
         return f'{len(output)} .las Files has been created and going to be processed'
-
-    

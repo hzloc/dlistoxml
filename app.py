@@ -1,9 +1,10 @@
 import datetime
+from lib2to3.pgen2.tokenize import untokenize
 from google.protobuf.descriptor import Error
 from numpy.core.fromnumeric import std
 import pandas as pd
 import streamlit as st
-from wrapper import dlisioWrapper, xmlGen, LasChunker, detailsLasFile
+from wrapper import dlisioWrapper, xmlGen, LasChunker, detailsLasFile, check
 from dlisio import dlis
 import lasio
 import numpy as np
@@ -25,18 +26,18 @@ def get_binary_file_downloader_html(bin_file, file_label="File"):
 
 
 servicetypes = {
-    "Coiled Tubing": "CT",
-    "Wireline": "WL",
-    "Slickline": "SL",
-    "Heavy Workover Unit": "HWU",
-    "Snubbing": "SNUB",
-    "Bullheading": "BLH",
+    "CT": "Coiled Tubing",
+    "WL": "Wireline",
+    "SL": "Slickline",
+    "HWU": "Heavy Workover Unit",
+    "SNUB": "Snubbing",
+    "BLH": "Bullheading",
 }
 datatypes = {
-    "Operational data": "OP",
-    "Subsurface real-time logging data": "RT",
-    "Subsurface raw data from memory": "PJ",
-    "Final corrected data": "FNL",
+    "OP": "Operational data",
+    "RT": "Subsurface real-time logging data",
+    "PJ": "Subsurface raw data from memory",
+    "FNL": "Final corrected data",
 }
 
 
@@ -88,6 +89,9 @@ if uploadedFile is not None:
             lasiofile = lasio.read("./uploads/" + uploadedFile.name, encoding="utf8")
             lf = lasiofile.df().reset_index()
             lf = lf.fillna(-999.25)
+            
+            ## Dropdown section for viewing more details
+            ## Any informative code block about file details should be added here
             with st.expander("More Details"):
                 details = {
                     "Index Type": lf.columns[0],
@@ -95,12 +99,15 @@ if uploadedFile is not None:
                     "Number of Curves": lf.shape[1],
                     "Direction": "Increasing" if (lf.iloc[0,0] - lf.iloc[1,0]) < 0 else "decreasing"
                 }
+                units = [e.unit for e in lasiofile.curves]
+                mnemonics = [e.mnemonic for e in lasiofile.curves]
+                st.dataframe(check(mnemonics, units))    
                 details = pd.DataFrame(details, index=[0])
                 st.dataframe(details)
                 wellDetails = detailsLasFile(lasiofile.well)
                 st.write(wellDetails)
+            
             st.write("### Data")
-            units = [e.unit for e in lasiofile.curves]
             st.dataframe(lf)
             end=time.time()
             st.write(f"### Execution time is: {'{:.2f}'.format(end-start)} seconds")
@@ -126,8 +133,9 @@ with st.form("xmlgeneration"):
     dataSource = st.text_input("Data Source", max_chars=32)
     purpose = st.text_input("Servise Purpose run")
     nullValue = st.text_input("Null Value", wellDetails['NULL'])
-    datatype = st.selectbox("Data Type", datatypes)
-    servicetype = st.selectbox("Service Type", options=servicetypes)
+    datatype = st.selectbox("Data Type", datatypes, format_func=lambda x: datatypes[x])
+    servicetype = st.selectbox("Service Type", options=servicetypes, format_func=lambda x: servicetypes[x])
+    conversion = st.checkbox("Follow mnemonics naming convention", value=False, help="Name=[Equipment Code]+”_”+[Data Type]+”_”+[Run Number – For Depth Related Data]+”_”-+[Log Name] ")
 
     # submit
     submit = st.form_submit_button("Submit")
@@ -152,7 +160,8 @@ if submit:
         False,
         nullValue,
         dataSource,
-        units=units
+        units=units,
+        conversion=conversion,
     )
     xmls = xml.createtopXML()
     try:
