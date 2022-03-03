@@ -70,17 +70,35 @@ if uploadedFile is not None:
     lastUpload = initFile(uploadedFile, uploadedFile.name)
     # .dlis format
     if str(uploadedFile.name).split(".")[1] == "dlis":
+        start = time.time()
         dlf = dlis.load("./uploads/" + uploadedFile.name)
         dlfwrap = dlisioWrapper(dlf)
         lf = dlfwrap.dlisioPandas()
         index1 = lf.columns[0]
         units = lf.iloc[0]
+        ## Dropdown section for viewing more details
+            ## Any informative code block about file details should be added here
+        with st.expander("More Details"):
+            with dlf as (f,*tail):
+                details = {
+                "Index Type": lf.columns[0],
+                "Data nodes": lf.shape[0]-1,
+                "Number of Curves": lf.shape[1],
+                "Direction": "Increasing" if (float(lf.iloc[2,0]) - float(lf.iloc[3,0])) < 0 else "decreasing"}
+                st.write(pd.DataFrame(details, index=[1]))
+                st.dataframe(check(lf.columns, units))
+                st.markdown("### Used tools for logs")
+                st.dataframe(dlfwrap.displayTool()) 
+            end=time.time()
+            st.write(f"### Execution time is: {'{:.2f}'.format(end-start)} seconds")
         st.write("### File")
         st.dataframe(lf)
+
 
     # .las format
     if str(uploadedFile.name).split(".")[1] == "las":
         if(uploadedFile.size > 100000000):
+            print("File is going to be butchered")
             message = LasChunker(lastUpload).chunkbigFile()
             st.write("## Files are being batched.....")
             st.write(f"### {message}")

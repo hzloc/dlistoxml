@@ -197,9 +197,26 @@ class dlisioWrapper:
     def __init__(self, file):
         self.__file = file
         self.logFiles = self.logfiles()
+        self.tools = self.logFiles[0].tools
         self.frames = self.frames()
         self.channels = self.channelGetter()
         self.datas = self.all_data()
+        print(self.logFiles)        
+    
+    def displayTool(self):
+        arr = []
+        for tool in self.tools:
+            arr.append({
+                "Name": tool.name,
+                "Description": tool.description,
+                "Generic Name": tool.generic_name,
+                "Status": tool.status,
+                "Parts": (",").join([x.name for x in tool.parts]), 
+                "Origin": tool.origin,
+                "Trademark_name": tool.trademark_name,
+                "Copynumber": tool.copynumber,
+            })
+        return DataFrame(arr)
 
     def logfiles(self):
         logicalfiles = []
