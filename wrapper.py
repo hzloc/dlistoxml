@@ -72,7 +72,15 @@ class xmlGen:
         self.servicecategory = str(uidWellInterventionId) + ',' + str(
             runnumber) + ',' + str(servicetype) + ',' + str(datatype)
         self.mnemonic = df.columns
+        self.dataSize = df.shape[0]
         
+        if self.dataSize < 10000:
+            self.maxDataNodes = self.dataSize
+            self.filesplit = False
+        else:
+            self.maxDataNodes = 10000
+            self.filesplit = True
+
         if conversion == False:
             self.mnemonic = df.columns
         else:
@@ -103,15 +111,16 @@ class xmlGen:
         indexType, startIndex, endIndex = self.indexTypeDeterminer()
         datas = self.df.values[:]
         if(str(self.filename.split('.')[1]).lower() == 'dlis'):
-            datas = self.df.values[1:]
+            datas = self.df.values[1:]        
+
         root = Element("logs",
-                       xmlns="http://www.witsml.org/schemas/1series",
-                       version="1.4.1.1")
+                    xmlns="http://www.witsml.org/schemas/1series",
+                    version="1.4.1.1")
         log = SubElement(root,
-                         'log',
-                         uidWell=self.uidWell,
-                         uidWellbore=self.uidWellbore,
-                         uid=self.uid)
+                        'log',
+                        uidWell=self.uidWell,
+                        uidWellbore=self.uidWellbore,
+                        uid=self.uid)
         namewell = SubElement(log, 'nameWell')
         namewell.text = self.wellname
         top_1_2 = SubElement(root, 'nameWellbore')
@@ -187,9 +196,8 @@ class xmlGen:
         top_4_2.text = self.comments
         top_4_3 = SubElement(top_4, 'serviceCategory')
         top_4_3.text = self.servicecategory
-
         root = tostring(root, pretty_print=True)
-
+        
         return root
 
 

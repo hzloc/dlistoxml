@@ -1,5 +1,6 @@
 import datetime
 from lib2to3.pgen2.tokenize import untokenize
+from uuid import uuid1
 from google.protobuf.descriptor import Error
 from numpy.core.fromnumeric import std
 import pandas as pd
@@ -9,7 +10,9 @@ from dlisio import dlis
 import lasio
 import numpy as np
 #Time
+from datetime import datetime
 import time
+
 
 ALLOWED_FILE_TYPE=['las','dlis']
 wellDetails = {"WELL": '', 
@@ -17,13 +20,6 @@ wellDetails = {"WELL": '',
                 "FLD": "",
                 "SRVC": "",
                 "NULL": "",}
-def get_binary_file_downloader_html(bin_file, file_label="File"):
-    with open(bin_file, "rb") as f:
-        data = f.read()
-    bin_str = base64.b64encode(data).decode()
-    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{os.path.basename(bin_file)}">Download: {file_label}</a>'
-    return href
-
 
 servicetypes = {
     "CT": "Coiled Tubing",
@@ -142,7 +138,7 @@ with st.form("xmlgeneration"):
     runnumber = st.number_input("Run Number", step=1)
     creation_date = st.text_input(
         "Creation Date",
-        value=datetime.datetime.now(),
+        value=datetime.now(),
         help="Timestamp format for SiteCom: yyyy-MM-dd”T”HH:mm:ss.fffzzz",
     )
     uidWell = st.text_input("Well UID", key="uidWell", autocomplete="default")
@@ -159,49 +155,97 @@ with st.form("xmlgeneration"):
     submit = st.form_submit_button("Submit")
 
 if submit:
-    xml = xmlGen(
-        uploadedFile.name,
-        wellname,
-        wellborename,
-        bu,
-        fieldname,
-        servicecompany,
-        runnumber,
-        creation_date,
-        uidWell,
-        uidWellbore,
-        uidWellInterventionId,
-        purpose,
-        datatype,
-        servicetype,
-        lf,
-        False,
-        nullValue,
-        dataSource,
-        units=units,
-        conversion=conversion,
-    )
-    xmls = xml.createtopXML()
-    try:
-        ffname = str(uploadedFile.name).split(".")[0]
-        with open("xml/{}.xml".format(ffname), mode="wb") as f:
-            f.write(xmls)
-    except Error:
-        print(Error)
-    else:
-        st.write(
-            "File: **{}.xml** is ready for downloading :sunglasses:".format(
-                ffname))
-        with st.form("generatedxml"):
-            xmlrepr = st.text_area(label="Generated Xml",
-                                value=xmls.decode(),
-                                height=800)
-        # st.markdown(
-        #     get_binary_file_downloader_html(f"xml/{ffname}.xml", f"{ffname}"),
-        #     unsafe_allow_html=True,
-        # )
-        st.download_button(
-            "Download",
-            xmls,
-            file_name=f"{ffname}.xml",
+    # KDI Requirements of the 10000 lines
+    if(lf.shape[0] < 10000):
+        xml = xmlGen(
+            uploadedFile.name,
+            wellname,
+            wellborename,
+            bu,
+            fieldname,
+            servicecompany,
+            runnumber,
+            creation_date,
+            uidWell,
+            uidWellbore,
+            uidWellInterventionId,
+            purpose,
+            datatype,
+            servicetype,
+            lf,
+            False,
+            nullValue,
+            dataSource,
+            units=units,
+            conversion=conversion,
         )
+        xmls = xml.createtopXML()
+        try:
+            ffname = str(uploadedFile.name).split(".")[0] + "-"  + str(uuid1())
+            with open("xml/{}.xml".format(ffname), mode="wb") as f:
+                f.write(xmls)
+        except Error:
+            print(Error)
+        else:
+            st.write(
+                "File: **{}.xml** is ready for downloading :sunglasses:".format(
+                    ffname))
+            with st.form("generatedxml"):
+                xmlrepr = st.text_area(label="Generated Xml",
+                                    value=xmls.decode(),
+                                    height=800)
+
+            ffname = str(uploadedFile.name).split(".")[0] + "-" + str(uuid1())
+            st.download_button(
+                "Download",
+                xmls,
+                file_name=f"{ffname}.xml",
+            )
+    # When the file has more data than 10000 lines
+    # Dataframe will be diveded into parts containing only 1-9939 data points, to have max 10000 lines xml files
+    # Number of mnemonics * 7-26 tags are coming from inputs and WD requirements 
+    else:
+        datanodes = lf.shape[0] # number of the data
+        arr_xmls = []
+        print(len(mnemonics))
+        start, end = 1, 10000-len(mnemonics)*7-26
+        while(datanodes > 0):
+            lf_temp = lf.iloc[start:end,:]
+            xml = xmlGen(
+            uploadedFile.name,
+            wellname,
+            wellborename,
+            bu,
+            fieldname,
+            servicecompany,
+            runnumber,
+            creation_date,
+            uidWell,
+            uidWellbore,
+            uidWellInterventionId,
+            purpose,
+            datatype,
+            servicetype,
+            lf_temp,
+            False,
+            nullValue,
+            dataSource,
+            units=units,
+            conversion=conversion,)
+           
+            xmls = xml.createtopXML()
+            arr_xmls.append(xmls)
+            datanodes-=10000-len(mnemonics)*7-26
+            start += 10000-len(mnemonics)*7-26
+            end += 10000-len(mnemonics)*7-26
+            if datanodes < 10000-len(mnemonics)*7-26:
+                end = start + datanodes
+
+    print(len(arr_xmls))
+    for ind,xmls in enumerate(arr_xmls):
+        try:
+            ffname = str(ind+1) + "-" + str(uploadedFile.name).split(".")[0]
+            with open("xml/{}.xml".format(ffname), mode="wb") as f:
+                f.write(xmls)
+        except Error:
+            print(Error)
