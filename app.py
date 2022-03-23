@@ -1,5 +1,8 @@
 import datetime
+from distutils.command.upload import upload
+from distutils.log import error
 from lib2to3.pgen2.tokenize import untokenize
+from lib2to3.pytree import Base
 from uuid import uuid1
 from google.protobuf.descriptor import Error
 from numpy.core.fromnumeric import std
@@ -14,7 +17,7 @@ from datetime import datetime
 import time
 
 
-ALLOWED_FILE_TYPE=['las','dlis']
+ALLOWED_FILE_TYPE=['las','dlis', 'csv', 'xlsx']
 wellDetails = {"WELL": '', 
                 "COMP": "",
                 "FLD": "",
@@ -57,15 +60,41 @@ if uploadedFile is not None:
     }
     st.write("### File basic information")
     st.write(pd.DataFrame(filedetails, index=[0]))
-
+    file_ext = str(uploadedFile.name).split(".")[-1]
     # """
     # when uploaded file size is bigger than 100mb
     # seperate into multiple files
     # when it is not we gonna directly process them
     # """
     lastUpload = initFile(uploadedFile, uploadedFile.name)
+    # table format
+    if (file_ext == "csv") | (file_ext == "xlsx"):
+        start = time.time()
+        if file_ext == "csv":
+            lf = pd.read_csv(uploadedFile, dtype=str, na_filter=True)
+        else:
+            lf = pd.read_excel(uploadedFile, dtype=str, na_filter=True, keep_default_na=False)
+        
+        with st.expander("More Details"):
+            details = {
+                    "Index Type": lf.columns[0],
+                    "Data nodes": lf.shape[0],
+                    "Number of Curves": lf.shape[1]
+                    }
+            st.write(details)
+            mnemonics = lf.columns
+            units = lf.iloc[0,:]
+            st.dataframe(check(mnemonics, units))    
+
+        
+        st.write("### Data")
+        st.dataframe(lf)
+        end=time.time()
+        st.write(f"### Execution time is: {'{:.2f}'.format(end-start)} seconds")
+    
+    
     # .dlis format
-    if str(uploadedFile.name).split(".")[1] == "dlis":
+    if file_ext == "dlis":
         start = time.time()
         dlf = dlis.load("./uploads/" + uploadedFile.name)
         dlfwrap = dlisioWrapper(dlf)
@@ -92,7 +121,7 @@ if uploadedFile is not None:
 
 
     # .las format
-    if str(uploadedFile.name).split(".")[1] == "las":
+    if file_ext == "las":
         if(uploadedFile.size > 100000000):
             print("File is going to be butchered")
             message = LasChunker(lastUpload).chunkbigFile()
