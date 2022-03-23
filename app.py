@@ -3,7 +3,7 @@ from distutils.command.upload import upload
 from distutils.log import error
 from lib2to3.pgen2.tokenize import untokenize
 from lib2to3.pytree import Base
-from uuid import uuid1
+from uuid import uuid1, uuid3
 from google.protobuf.descriptor import Error
 from numpy.core.fromnumeric import std
 import pandas as pd
@@ -276,5 +276,18 @@ if submit:
             ffname = str(ind+1) + "-" + str(uploadedFile.name).split(".")[0]
             with open("xml/{}.xml".format(ffname), mode="wb") as f:
                 f.write(xmls)
+
+            st.text_area(
+                label=ffname,
+                value=xmls.decode(),
+                key=uuid1()
+            )
+            st.download_button(
+                label="Download " + ffname,
+                file_name=str(ffname) + ".xml",
+                data=xmls,
+                mime="text/xml",
+                key=uuid1()
+            )
         except Error:
             print(Error)
