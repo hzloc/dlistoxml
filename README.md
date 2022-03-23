@@ -8,6 +8,7 @@ Software has been builded by using [Streamlit](https://streamlit.io/).
 - [x] .csv and .xlsx file type support
 - [x] .las file type support enhanced
 - [x] UI is more interactive
+- [x] Information about the uploaded file is displayed to the user for QC purposes
 - [ ] Building communication with KDI Sitecom
 
 
